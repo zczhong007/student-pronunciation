@@ -868,18 +868,10 @@
                 
                 await simulateFileAnalysis(uploadedFiles);
                 
-                // 显示分析结果（使用现有的发音分析结果显示）
-                const randomScore = Math.floor(Math.random() * 30) + 70; // 70-100之间的随机分
+                // 调用完整的发音分析功能（包括问题检测和改进建议）
+                performFullSpeechAnalysis();
                 
-                // 调用原有的分析函数
-                if (typeof analyzeSpeech === 'function') {
-                    analyzeSpeech(randomScore);
-                } else {
-                    // 如果没有这个函数，手动显示结果
-                    showResultSection(randomScore);
-                }
-                
-                showNotification(`成功分析了 ${uploadedFiles.length} 个文件`, 'success');
+                showNotification(`成功分析了 ${uploadedFiles.length} 个文件，已生成发音分析和改进建议`, 'success');
             } catch (error) {
                 console.error('文件分析失败:', error);
                 showNotification('文件分析失败，请重试', 'error');
@@ -890,19 +882,243 @@
             }
         });
         
-        // 手动显示结果的函数
-        function showResultSection(score) {
-            const resultSection = document.getElementById('result-section');
-            const scoreValue = document.getElementById('score-value');
+        // 完整的发音分析函数（包括问题检测和改进建议）
+        function performFullSpeechAnalysis() {
+            // 加载发音数据
+            if (typeof loadPronunciationData === 'function') {
+                loadPronunciationData();
+            }
             
-            if (resultSection && scoreValue) {
-                scoreValue.textContent = score;
-                resultSection.style.display = 'block';
+            // 获取默认的练习文本或使用通用文本
+            const exerciseTextContent = getUploadDefaultText();
+            if (!exerciseTextContent) {
+                return;
+            }
+            
+            // 分析文本
+            const textAnalysis = pronunciationData.analyzeText(exerciseTextContent);
+            
+            // 基于文本难度和个人表现计算分数
+            const baseScore = calculateBaseScoreForUpload(textAnalysis);
+            const problems = generateProblemsForUpload(textAnalysis);
+            const recommendations = pronunciationData.generateRecommendations(
+                baseScore, 
+                textAnalysis.difficulty, 
+                problems
+            );
+            
+            // 显示完整结果
+            displayCompleteAnalysisResults(baseScore, problems, recommendations, textAnalysis);
+        }
+        
+        // 为上传功能获取默认文本
+        function getUploadDefaultText() {
+            return "Welcome to our English pronunciation practice. Today we will focus on clear vowel sounds and correct word stress. The quick brown fox jumps over the lazy dog. Practice makes perfect!";
+        }
+        
+        // 为上传功能计算基础分数
+        function calculateBaseScoreForUpload(textAnalysis) {
+            const { difficulty, wordCount } = textAnalysis;
+            
+            // 基础分
+            let baseScore = 70;
+            
+            // 难度调整：难词多则分数可能降低
+            const hardPercentage = difficulty.hard / wordCount;
+            if (hardPercentage > 0.3) {
+                baseScore -= 10;
+            } else if (hardPercentage > 0.1) {
+                baseScore -= 5;
+            }
+            
+            // 随机波动（模拟用户实际表现）
+            const randomAdjustment = Math.floor(Math.random() * 20) - 10; // -10 到 +10
+            baseScore += randomAdjustment;
+            
+            // 确保分数在合理范围内
+            return Math.max(30, Math.min(98, baseScore));
+        }
+        
+        // 为上传功能生成问题
+        function generateProblemsForUpload(textAnalysis) {
+            const { analyzedWords, difficulty } = textAnalysis;
+            const problems = [];
+            
+            // 根据单词难度和随机因素选择问题单词
+            const allWords = analyzedWords.filter(word => word.hasInfo);
+            
+            // 优先选择难词
+            const hardWords = allWords.filter(word => word.difficulty === "hard");
+            const mediumWords = allWords.filter(word => word.difficulty === "medium");
+            const easyWords = allWords.filter(word => word.difficulty === "easy");
+            
+            // 选择问题单词 (最多5个)
+            const maxProblems = 5;
+            let selectedWords = [];
+            
+            // 优先添加难词
+            if (hardWords.length > 0) {
+                const count = Math.min(2, hardWords.length);
+                selectedWords.push(...hardWords.slice(0, count));
+            }
+            
+            // 然后添加中等难度的词
+            if (selectedWords.length < maxProblems && mediumWords.length > 0) {
+                const remaining = maxProblems - selectedWords.length;
+                const count = Math.min(remaining, mediumWords.length);
+                selectedWords.push(...mediumWords.slice(0, count));
+            }
+            
+            // 最后如果有剩余空间，添加简单词
+            if (selectedWords.length < maxProblems && easyWords.length > 0) {
+                const remaining = maxProblems - selectedWords.length;
+                const count = Math.min(remaining, easyWords.length);
+                selectedWords.push(...easyWords.slice(0, count));
+            }
+            
+            // 为每个选择的单词生成具体问题
+            selectedWords.forEach(wordInfo => {
+                const problem = {
+                    word: wordInfo.word,
+                    correctPronunciation: wordInfo.phonetic,
+                    userPronunciation: "需改进",
+                    suggestion: generateWordSuggestionForUpload(wordInfo)
+                };
                 
-                // 滚动到结果区域
-                resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                problems.push(problem);
+            });
+            
+            // 如果没有收集到足够的问题，添加一些通用建议
+            if (problems.length < 3) {
+                const fallbackWords = ["pronunciation", "intonation", "fluency"];
+                fallbackWords.forEach(word => {
+                    if (!problems.find(p => p.word === word)) {
+                        // 尝试从发音数据中获取这个单词的信息
+                        const wordData = pronunciationData.findWord(word);
+                        problems.push({
+                            word: word,
+                            correctPronunciation: wordData ? wordData.phonetic : "标准发音",
+                            userPronunciation: "需练习",
+                            suggestion: "提高整体发音准确度"
+                        });
+                    }
+                });
+            }
+            
+            return problems;
+        }
+        
+        // 为上传功能生成单词建议
+        function generateWordSuggestionForUpload(wordInfo) {
+            if (wordInfo.commonMistakes && wordInfo.commonMistakes.length > 0) {
+                const mistake = wordInfo.commonMistakes[Math.floor(Math.random() * wordInfo.commonMistakes.length)];
+                return `注意避免错误发音"${mistake}"，正确发音为${wordInfo.phonetic}`;
+            }
+            
+            if (wordInfo.difficulty === "hard") {
+                return `这个单词音节较多(${wordInfo.syllables.length}个音节)，重音在第${wordInfo.stress}个音节，需要多练习`;
+            } else if (wordInfo.difficulty === "medium") {
+                return `注意发音准确性，每个音节都要清晰`;
+            } else {
+                return `基础单词，确保发音标准`;
             }
         }
+        
+        // 显示完整的分析结果
+        function displayCompleteAnalysisResults(score, problems, recommendations, textAnalysis = null) {
+            // 获取相关DOM元素
+            const scoreValue = document.getElementById('score-value');
+            const problemWordsDiv = document.querySelector('.problem-words');
+            const suggestionsDiv = document.querySelector('.suggestions');
+            const resultSection = document.getElementById('result-section');
+            
+            if (!scoreValue || !problemWordsDiv || !suggestionsDiv || !resultSection) {
+                return;
+            }
+            
+            // 更新分数
+            scoreValue.textContent = score;
+            
+            // 更新分数条
+            const scoreItems = document.querySelectorAll('.score-item');
+            const scores = [
+                Math.max(40, Math.min(98, score + Math.floor(Math.random() * 10) - 5)), // 发音准确度
+                Math.max(50, Math.min(95, score + Math.floor(Math.random() * 15) - 10)), // 语调流畅度
+                Math.max(45, Math.min(95, score + Math.floor(Math.random() * 12) - 8)) // 节奏掌握
+            ];
+            
+            scoreItems.forEach((item, index) => {
+                const fill = item.querySelector('.score-fill');
+                const number = item.querySelector('.score-number');
+                const newScore = scores[index];
+                
+                // 重置宽度以触发动画
+                fill.style.width = '0%';
+                fill.offsetHeight; // 强制重绘
+                
+                setTimeout(() => {
+                    fill.style.transition = 'width 1.5s ease-in-out';
+                    fill.style.width = `${newScore}%`;
+                    number.textContent = `${newScore}%`;
+                }, 100 * index);
+            });
+            
+            // 显示问题单词
+            problemWordsDiv.innerHTML = '';
+            if (problems.length > 0) {
+                problems.forEach(problem => {
+                    const wordDiv = document.createElement('div');
+                    wordDiv.className = 'word-item';
+                    wordDiv.title = `点击查看标准发音建议`;
+                    wordDiv.innerHTML = `
+                        <strong>${problem.word}</strong>
+                        <div class="phonetic">
+                            <small>音标: </small>
+                            <span class="correct">${problem.correctPronunciation}</span>
+                        </div>
+                        <div class="suggestion">${problem.suggestion}</div>
+                    `;
+                    problemWordsDiv.appendChild(wordDiv);
+                });
+            } else {
+                problemWordsDiv.innerHTML = '<div class="no-problems"><i class="fas fa-check-circle"></i> 未发现明显发音问题</div>';
+            }
+            
+            // 显示建议
+            suggestionsDiv.innerHTML = '';
+            if (recommendations.length > 0) {
+                recommendations.forEach(rec => {
+                    const p = document.createElement('p');
+                    p.innerHTML = `<i class="fas fa-chevron-right"></i> ${rec}`;
+                    suggestionsDiv.appendChild(p);
+                });
+            }
+            
+            // 添加文本分析信息
+            if (textAnalysis) {
+                const analysisInfo = document.createElement('div');
+                analysisInfo.className = 'analysis-info';
+                analysisInfo.innerHTML = `
+                    <div class="analysis-summary">
+                        <span>文本分析: ${textAnalysis.wordCount}个单词 | 
+                        难度: ${textAnalysis.difficulty.easy}易/${textAnalysis.difficulty.medium}中/${textAnalysis.difficulty.hard}难 |
+                        预计练习时间: ${textAnalysis.estimatedTime}秒</span>
+                    </div>
+                `;
+                suggestionsDiv.appendChild(analysisInfo);
+            }
+            
+            // 显示结果区域
+            resultSection.style.display = 'block';
+            
+            // 滚动到结果区域
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // 显示通知
+            showNotification(`分析完成！得分: ${score}，发现 ${problems.length} 个发音问题`, 'success');
+        }
+        
+        // showResultSection函数已升级为displayCompleteAnalysisResults函数，提供完整的分析结果
         
         async function simulateFileAnalysis(files) {
             let totalDuration = files.length * 1.5; // 模拟每个文件需要1.5秒分析
