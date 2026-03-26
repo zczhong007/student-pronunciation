@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生语音朗读评分系统</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部导航 -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <h1>学生语音朗读评分系统</h1>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="read">朗读评分</button>
+                <button class="nav-btn" data-tab="dictation">听写批改</button>
+                <button class="nav-btn" data-tab="manage">班级管理</button>
+            </nav>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 朗读评分模块 -->
+            <div class="tab-content active" id="read-tab">
+                <div class="card">
+                    <h2><i class="fas fa-microphone"></i> 课文朗读评分</h2>
+                    
+                    <div class="exercise-section">
+                        <h3>练习内容</h3>
+                        <div class="exercise-content">
+                            <p id="exercise-text">Hello world, welcome to our English class. Today we will learn about pronunciation. The quick brown fox jumps over the lazy dog. She sells seashells by the seashore. How much wood would a woodchuck chuck if a woodchuck could chuck wood?</p>
+                            <div class="exercise-controls">
+                                <button id="play-sample" class="btn btn-secondary">
+                                    <i class="fas fa-volume-up"></i> 听标准发音
+                                </button>
+                                <button id="change-exercise" class="btn btn-secondary">
+                                    <i class="fas fa-sync-alt"></i> 更换练习
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="recording-section">
+                        <h3>录音与评分</h3>
+                        <div class="recording-controls">
+                            <div class="recording-status">
+                                <div class="waveform" id="waveform"></div>
+                                <div class="timer" id="timer">00:00</div>
+                            </div>
+                            <div class="recording-buttons">
+                                <button id="start-record" class="btn btn-primary btn-large">
+                                    <i class="fas fa-microphone"></i> 开始录音
+                                </button>
+                                <button id="stop-record" class="btn btn-danger btn-large" disabled>
+                                    <i class="fas fa-stop"></i> 停止录音
+                                </button>
+                                <button id="play-record" class="btn btn-secondary btn-large" disabled>
+                                    <i class="fas fa-play"></i> 播放录音
+                                </button>
+                                <button id="analyze-btn" class="btn btn-success btn-large" disabled>
+                                    <i class="fas fa-chart-line"></i> 分析发音
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-section" id="result-section" style="display: none;">
+                        <h3>评分结果</h3>
+                        <div class="result-details">
+                            <div class="score-display">
+                                <div class="overall-score">
+                                    <div class="score-circle">
+                                        <span id="score-value">85</span>
+                                        <small>分</small>
+                                    </div>
+                                    <div class="score-label">综合评分</div>
+                                </div>
+                                <div class="score-breakdown">
+                                    <div class="score-item">
+                                        <span class="score-title">发音准确度</span>
+                                        <div class="score-bar">
+                                            <div class="score-fill" style="width: 80%;"></div>
+                                        </div>
+                                        <span class="score-number">80%</span>
+                                    </div>
+                                    <div class="score-item">
+                                        <span class="score-title">语调流畅度</span>
+                                        <div class="score-bar">
+                                            <div class="score-fill" style="width: 90%;"></div>
+                                        </div>
+                                        <span class="score-number">90%</span>
+                                    </div>
+                                    <div class="score-item">
+                                        <span class="score-title">节奏掌握</span>
+                                        <div class="score-bar">
+                                            <div class="score-fill" style="width: 85%;"></div>
+                                        </div>
+                                        <span class="score-number">85%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="word-analysis">
+                                <h4>发音问题分析</h4>
+                                <div class="problem-words" id="problem-words">
+                                    <!-- 动态生成有问题的单词 -->
+                                </div>
+                            </div>
+                            
+                            <div class="recommendations">
+                                <h4><i class="fas fa-lightbulb"></i> 练习建议</h4>
+                                <div class="suggestions" id="suggestions">
+                                    <!-- 动态生成建议 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 听写批改模块 -->
+            <div class="tab-content" id="dictation-tab">
+                <div class="card">
+                    <h2><i class="fas fa-edit"></i> 听写批改</h2>
+                    <div class="dictation-section">
+                        <div class="dictation-controls">
+                            <div class="input-group">
+                                <label for="dictation-text">听写原文</label>
+                                <textarea id="dictation-text" placeholder="例如：apple, banana, cat, dog, elephant..."></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label for="student-text">学生答案（拍照或手写）</label>
+                                <textarea id="student-text" placeholder="粘贴学生答案或拍照识别结果"></textarea>
+                                <div class="image-upload">
+                                    <button id="upload-image" class="btn btn-secondary">
+                                        <i class="fas fa-camera"></i> 上传图片
+                                    </button>
+                                    <input type="file" id="image-input" accept="image/*" style="display: none;">
+                                </div>
+                            </div>
+                            <button id="check-dictation" class="btn btn-primary btn-large">
+                                <i class="fas fa-check-circle"></i> 批改作业
+                            </button>
+                        </div>
+                        
+                        <div class="dictation-result" id="dictation-result" style="display: none;">
+                            <h3>批改结果</h3>
+                            <div class="correction-display">
+                                <!-- 批改结果动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 班级管理模块 -->
+            <div class="tab-content" id="manage-tab">
+                <div class="card">
+                    <h2><i class="fas fa-users"></i> 班级管理</h2>
+                    <div class="class-management">
+                        <p>班级管理功能正在开发中...</p>
+                        <p>即将推出功能：</p>
+                        <ul>
+                            <li>学生成绩统计</li>
+                            <li>作业布置与收集</li>
+                            <li>学习进度跟踪</li>
+                            <li>微信群对接</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部信息 -->
+        <footer class="footer">
+            <p>© 2025 学生语音朗读评分系统 | 专为微信群学习辅助设计</p>
+            <p class="footer-tip">
+                <i class="fas fa-lightbulb"></i> 
+                提示：将本页面链接分享到微信群，学生即可使用朗读评分功能
+            </p>
+        </footer>
+    </div>
+
+    <!-- 音频元素 -->
+    <audio id="sample-audio" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+    <audio id="recorded-audio"></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
