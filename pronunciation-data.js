@@ -305,6 +305,11 @@ const pronunciationData = {
         if (length <= 7 && syllableCount <= 3) return "medium";
         return "hard";
     },
+    
+    // 查找单词（findWord的别名，用于兼容性）
+    findWord(word) {
+        return this.getWordInfo(word);
+    },
 
     // 分析文本中的单词
     analyzeText(text) {
